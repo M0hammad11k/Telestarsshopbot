@@ -1,94 +1,49 @@
-import telebot
-from telebot import types
+import telebot from telebot import types import time
 
-# توکن ربات
-BOT_TOKEN = "8090137916:AAGIxEJJ0YyUkzFwXyxbJ_9iEkmCutT-CNo"
-bot = telebot.TeleBot(BOT_TOKEN)
+TOKEN = '8090137916:AAGIxEJJ0YyUkzFwXyxbJ_9iEkmCutT-CNo' ADMIN_ID = 128473145 CARD_NUMBER = '6104-3376-8005-5348' CARD_OWNER = 'محمد کریم پور' CONFIG_FILE = 'configs.txt'
 
-# آیدی عددی ادمین
-ADMIN_ID = 128473145
+bot = telebot.TeleBot(TOKEN)
 
-# شماره کارت و نام
-CARD_NUMBER = "6104-3376-8005-5348"
-CARD_NAME = "محمد کریم پور"
+plans = { '۱۰ گیگ - ۳۰ روزه 🚀': ('50,000 تومان', '10GB'), '۲۵ گیگ - ۳۰ روزه ⚡️': ('80,000 تومان', '25GB'), '۴۰ گیگ - ۳۰ روزه 🔥': ('105,000 تومان', '40GB'), '۷۵ گیگ - ۳۰ روزه 🧨': ('180,000 تومان', '75GB'), '۱۰۰ گیگ - ۳۰ روزه 💣': ('240,000 تومان', '100GB') }
 
-# پلن‌ها و قیمت‌ها
-plans = {
-    "10 گیگ - 30 روزه": "50,000 تومان",
-    "25 گیگ - 30 روزه": "80,000 تومان",
-    "40 گیگ - 30 روزه": "105,000 تومان",
-    "75 گیگ - 30 روزه": "180,000 تومان",
-    "100 گیگ - 30 روزه": "240,000 تومان"
-}
+حالت حافظه ساده برای نگهداری انتخاب کاربر
 
-# ذخیره آی‌دی کاربر و انتخابش برای استفاده بعدی
-user_choices = {}
+user_data = {}
 
-# خواندن کانفیگ از فایل
-def get_next_config():
+@bot.message_handler(commands=['start']) def send_welcome(message): markup = types.ReplyKeyboardMarkup(resize_keyboard=True) for plan in plans: markup.add(plan) bot.send_message(message.chat.id, 'سلام! خوش اومدی به ربات فروش VPN ما! انتخاب کن:', reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text in plans) def send_payment_info(message): price, volume = plans[message.text] user_data[message.chat.id] = message.text  # ذخیره پلن انتخابی text = f"پلن انتخابی: {message.text}\nهزینه: {price}\n\nلطفاً مبلغ رو به شماره کارت زیر واریز کن و رسیدشو بفرست:\n\n{CARD_NUMBER}\nبه نام: {CARD_OWNER}" bot.send_message(message.chat.id, text, parse_mode='Markdown')
+
+@bot.message_handler(content_types=['photo']) def handle_photo(message): if message.photo: caption = user_data.get(message.chat.id, 'پلن نامشخص') bot.send_message(message.chat.id, 'رسید دریافت شد. منتظر تایید باش! ✅') bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=f"رسید کاربر: {message.from_user.first_name} ({message.chat.id})\nپلن: {caption}", reply_markup=confirm_keyboard(message.chat.id))
+
+کیبورد تایید/رد برای ادمین
+
+def confirm_keyboard(user_id): markup = types.InlineKeyboardMarkup() markup.add(types.InlineKeyboardButton("✅ تایید", callback_data=f"approve:{user_id}")) markup.add(types.InlineKeyboardButton("❌ رد", callback_data=f"reject:{user_id}")) return markup
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("approve") or call.data.startswith("reject")) def handle_decision(call): action, user_id = call.data.split(":") user_id = int(user_id)
+
+if call.from_user.id != ADMIN_ID:
+    bot.answer_callback_query(call.id, "شما ادمین نیستید!")
+    return
+
+if action == 'approve':
     try:
-        with open("configs.txt", "r") as file:
-            lines = file.readlines()
-        if not lines:
-            return None
-        config = lines[0].strip()
-        with open("configs.txt", "w") as file:
-            file.writelines(lines[1:])
-        return config
+        with open(CONFIG_FILE, 'r') as f:
+            configs = f.readlines()
+        if configs:
+            config = configs.pop(0).strip()
+            with open(CONFIG_FILE, 'w') as f:
+                f.writelines(configs)
+            bot.send_message(user_id, f"کانفیگ شما آماده‌ست!\n\n{config}")
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ تایید شد و کانفیگ ارسال شد.")
+        else:
+            bot.send_message(user_id, 'فعلاً کانفیگی موجود نیست. لطفاً بعداً امتحان کن.')
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ رسید تایید شد ولی کانفیگی موجود نبود.")
     except Exception as e:
-        print("Error reading configs.txt:", e)
-        return None
+        bot.send_message(ADMIN_ID, f'خطا در ارسال کانفیگ: {e}')
+else:
+    bot.send_message(user_id, '❌ رسید شما رد شد. لطفاً مجدداً اقدام کنید.')
+    bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="❌ رسید رد شد.")
 
-# استارت
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    markup = types.InlineKeyboardMarkup()
-    for title in plans.keys():
-        markup.add(types.InlineKeyboardButton(text=title, callback_data=title))
-    bot.send_message(message.chat.id, "لطفاً یکی از پلن‌های زیر را انتخاب کنید:", reply_markup=markup)
+while True: try: bot.infinity_polling() except Exception as e: print("Bot crashed:", e) time.sleep(5)
 
-# انتخاب پلن
-@bot.callback_query_handler(func=lambda call: call.data in plans)
-def handle_plan_selection(call):
-    user_choices[call.from_user.id] = call.data
-    price = plans[call.data]
-    msg = f"پلن انتخابی شما:\n{call.data}\nقیمت: {price}\n\nلطفاً مبلغ را به کارت زیر واریز کرده و رسید را ارسال کنید:\n\nشماره کارت: {CARD_NUMBER}\nبه نام: {CARD_NAME}"
-    bot.send_message(call.from_user.id, msg)
-
-# دریافت عکس رسید
-@bot.message_handler(content_types=['photo'])
-def handle_photo(message):
-    if message.from_user.id not in user_choices:
-        bot.send_message(message.chat.id, "لطفاً ابتدا یک پلن انتخاب کنید.")
-        return
-
-    caption = f"رسید پرداخت از {message.from_user.first_name}\nپلن: {user_choices[message.from_user.id]}"
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("✅ تأیید", callback_data=f"approve_{message.from_user.id}"),
-        types.InlineKeyboardButton("❌ رد", callback_data="reject")
-    )
-    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
-    bot.send_message(ADMIN_ID, caption, reply_markup=markup)
-
-# تایید / رد پرداخت توسط ادمین
-@bot.callback_query_handler(func=lambda call: call.data.startswith("approve_") or call.data == "reject")
-def handle_admin_decision(call):
-    if call.from_user.id != ADMIN_ID:
-        return
-
-    if call.data == "reject":
-        bot.send_message(call.message.chat.id, "پرداخت رد شد.")
-        return
-
-    user_id = int(call.data.split("_")[1])
-    config = get_next_config()
-    if config:
-        bot.send_message(user_id, f"✅ پرداخت شما تایید شد!\n\nاینم کانفیگ شما:\n{config}")
-        bot.send_message(call.message.chat.id, f"کانفیگ برای کاربر {user_id} ارسال شد.")
-    else:
-        bot.send_message(user_id, "❌ کانفیگی موجود نیست، لطفاً بعداً تلاش کنید.")
-        bot.send_message(call.message.chat.id, "کانفیگ موجود نبود.")
-
-# اجرای ربات
-bot.infinity_polling()
