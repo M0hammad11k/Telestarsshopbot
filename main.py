@@ -26,7 +26,7 @@ def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for plan in plans:
         markup.add(plan)
-        markup.add('💬 پشتیبانی')
+     markup.add('💬 پشتیبانی')
     bot.send_message(message.chat.id, 'سلام! خوش اومدی به ربات فروش VPN ما! انتخاب کن:', reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text in plans)
