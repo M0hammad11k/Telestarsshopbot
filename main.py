@@ -26,6 +26,7 @@ def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for plan in plans:
         markup.add(plan)
+        markup.add('💬 پشتیبانی')
     bot.send_message(message.chat.id, 'سلام! خوش اومدی به ربات فروش VPN ما! انتخاب کن:', reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text in plans)
@@ -77,6 +78,10 @@ def handle_decision(call):
         bot.send_message(user_id, '❌ رسید شما رد شد. لطفاً مجدداً اقدام کنید.')
         bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="❌ رسید رد شد.")
 
+@bot.message_handler(func=lambda m: m.text == '💬 پشتیبانی')
+def support_handler(message):
+    bot.send_message(message.chat.id, "برای ارتباط با پشتیبانی، روی لینک زیر کلیک کن:\n\n[@Teleshop_ad](https://t.me/Teleshop_ad)", parse_mode='Markdown')
+    
 while True:
     try:
         bot.infinity_polling()
