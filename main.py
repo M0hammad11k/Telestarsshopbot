@@ -1,4 +1,4 @@
-import telebot from telebot import types import time
+import telebot from telebot import types
 
 TOKEN = '8090137916:AAGIxEJJ0YyUkzFwXyxbJ_9iEkmCutT-CNo' ADMIN_ID = 128473145 CARD_NUMBER = '6104-3376-8005-5348' CARD_OWNER = 'محمد کریم پور' CONFIG_FILE = 'configs.txt'
 
